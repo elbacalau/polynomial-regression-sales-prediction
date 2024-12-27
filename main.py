@@ -29,7 +29,7 @@ def entrenar_modelo(variables: pd.DataFrame, grado: int) -> tuple[Ridge, Polynom
     X_poly: np.ndarray = poly.fit_transform(variables[["Year", "Profit", "Discount", "Quantity"]])
     scaler = StandardScaler()
     X_poly_scaled = scaler.fit_transform(X_poly)
-    modelo: Ridge = Ridge(alpha=100.0)
+    modelo: Ridge = Ridge(alpha=90.0)
     modelo.fit(X_poly_scaled, variables["Sales"])
     return modelo, poly, scaler
 
@@ -65,24 +65,34 @@ def graficar_resultados(
         variables["Year"], variables["Profit"], color="orange", label="Datos historicos de profit", s=60, alpha=0.7
     )
 
-    years: np.ndarray = np.sort(variables["Year"].unique())
-    avg_profit: float = variables["Profit"].mean()
-    avg_discount: float = variables["Discount"].mean()
-    avg_quantity: float = variables["Quantity"].mean()
-    years_poly: np.ndarray = poly.transform(
+   
+    for i, year in enumerate(variables["Year"]):
+        plt.text(
+            variables["Year"][i], variables["Sales"][i], f"${variables['Sales'][i]:,.2f}", 
+            ha="center", fontsize=9, color="blue", verticalalignment="bottom"
+        )
+        
+    years_extended = np.arange(2014, 2020, 1) 
+    avg_profit = variables["Profit"].mean()
+    avg_discount = variables["Discount"].mean()
+    avg_quantity = variables["Quantity"].mean()
+    years_poly_extended = poly.transform(
         np.column_stack(
             [
-                years,
-                [avg_profit] * len(years),
-                [avg_discount] * len(years),
-                [avg_quantity] * len(years),
+                years_extended,
+                [avg_profit] * len(years_extended),
+                [avg_discount] * len(years_extended),
+                [avg_quantity] * len(years_extended),
             ]
         )
     )
-    years_poly_scaled = scaler.transform(years_poly)
-    sales_pred: np.ndarray = modelo.predict(years_poly_scaled)
+    years_poly_scaled = scaler.transform(years_poly_extended)
+    sales_pred_extended = modelo.predict(years_poly_scaled)
+    profit_pred_extended = sales_pred_extended * (1 - avg_discount)  
 
-    plt.plot(years, sales_pred, color="red", label=f"Modelo de regresión polinomica (grado {grado})", linewidth=2)
+  
+    plt.plot(years_extended, sales_pred_extended, color="red", label=f"Predicción ventas (grado {grado})", linewidth=2)
+    plt.plot(years_extended, profit_pred_extended, color="purple", label=f"Predicción profit (grado {grado})", linewidth=2)
 
     plt.scatter(2018, ventas_2018_pred, color="green", label="Predicción ventas 2018", zorder=5, s=100)
     plt.scatter(2018, profit_2018_pred, color="purple", label="Predicción profit 2018", zorder=5, s=100)
@@ -106,8 +116,6 @@ def graficar_resultados(
     )
     plt.savefig("resultados_prediccion.png")    
     plt.show()
-    
-
 
 def main() -> None:
     file_name: str = "stores_sales_forecasting.csv" 
